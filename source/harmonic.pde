@@ -1,26 +1,37 @@
-float RAD = 200;
+float RAD = 150;
+float radmin = 0;
+float radmax = 200;
+
 float OFF = 50;
 
 float centerX;
 float centerY;
 
-float PULS = 0.03;
+float pulsmin = 0;
+float pulsmax = 0.1;
+float puls;
+
+float phi0;
+float phimin = 0;
+float phimax = TWO_PI;
 
 boolean graphing;
 boolean MOVING;
 
 Bubble osc;
 Bubble rot;
+Arrow fasor;
 
 ArrayList<Button> buttons;
 ArrayList<Bubble> graph;
+ArrayList<Slider> sliders;
 
 int time;
 int gtime;
 
 void setup() {
   fullScreen();
-  centerX = OFF + RAD;
+  centerX = OFF + 200;
   centerY = height/2 + 90;
 
   osc = new Bubble(centerX, centerY, 20);
@@ -29,18 +40,30 @@ void setup() {
   rot.setcol("blue");
   rot.togglevisible();
 
+  fasor = new Arrow(centerX, centerY, rot.x, rot.y, color(0));
+
   graph = new ArrayList<Bubble>();
   buttons = new ArrayList<Button>();
-  buttons.add(new Button(10, 10, 50, "Red Ball"));
+  buttons.add(new Button(10, 10, 50, "Rode Bal")); //0
   buttons.get(0).clickbutton();
-  buttons.add(new Button(90, 10, 50, "Blue Ball"));
-  buttons.add(new Button(170, 10, 50, "Axes"));
-  buttons.add(new Button(250, 10, 50, "Start/Stop"));
-  buttons.add(new Button(330, 10, 50, "Reset"));
-  buttons.add(new Button(10, 70, 50, "Connect"));
-  buttons.add(new Button(410, 10, 50, "Graph"));
-  buttons.add(new Button(90, 70, 50, "y component"));
-  buttons.add(new Button(width - 80, 10, 50, "quit"));
+  buttons.add(new Button(90, 10, 50, "Blauwe Bal")); //1
+  buttons.add(new Button(170, 10, 50, "Assen")); //2
+  buttons.add(new Button(250, 10, 50, "Start/Stop")); //3
+  buttons.add(new Button(330, 10, 50, "Reset")); //4
+  buttons.add(new Button(170, 70, 50, "Verbind")); //5
+  buttons.add(new Button(410, 10, 50, "Grafiek")); //6
+  buttons.add(new Button(10, 70, 50, "y component")); //7
+  buttons.add(new Button(width - 80, 10, 50, "quit")); //8
+  buttons.add(new Button(90, 70, 50, "Fasor")); //9
+
+  sliders = new ArrayList<Slider>();
+  sliders.add(new Slider(800, 10, 400, "Pulsatie"));
+  sliders.get(0).setDefault(0.3);
+  sliders.add(new Slider(800, 70, 400, "Amplitude"));
+  sliders.get(1).setDefault(0.75);
+  sliders.add(new Slider(800, 130, 400, "Beginfase"));
+  sliders.get(2).setDefault(0);
+
 
   time = 0;
   gtime = 0;
@@ -58,9 +81,23 @@ void draw() {
     b.show();
   }
 
+  for (Slider s : sliders) {
+    s.show();
+  }
+
+  updatePhi0();
+  updateRadius();
+  updatePulsation();
   updatecircles();
 
-
+  // Y COMPONENT 7
+  if (buttons.get(7).clicked) {
+    stroke(255, 0, 0);
+    strokeWeight(4);
+    int offset = 0;
+    line(centerX - offset, centerY, centerX - offset, osc.y);
+    strokeWeight(1);
+  }
   // SHOW RED BALL 0
   if (buttons.get(0).clicked) {
     osc.show();
@@ -88,6 +125,10 @@ void draw() {
     graphing = false;
     graph.clear();    
     buttons.get(4).clickbutton();
+
+    for (Slider s : sliders) {
+      s.reset();
+    }
   }
 
   //CONNECT 5
@@ -103,19 +144,26 @@ void draw() {
     buttons.get(6).clickbutton();
     updatecircles();
   }
-  
-  // Y COMPONENT 7
-    if (buttons.get(7).clicked) {
-    stroke(255,0,0);
-    strokeWeight(4);
-    int offset = 0;
-    line(centerX - offset, centerY, centerX - offset, osc.y);
-    strokeWeight(1);
-  }
-  
+
   //EXIT 8
-  if(buttons.get(8).clicked){
+  if (buttons.get(8).clicked) {
     exit();
+  }
+
+  //FASOR 9
+  if (buttons.get(9).clicked) {
+    fasor.updatexe(rot.x);
+    fasor.updateye(rot.y);
+    fasor.show();
+  }
+
+  //If the mouse is pressed, do sliders.
+  if (mousePressed) {
+    for (Slider s : sliders) {
+      if (s.checkHovering()) {
+        s.update();
+      }
+    }
   }
 
 
@@ -131,7 +179,7 @@ void draw() {
 
   if (MOVING) {
     time += 1;
-    if(graphing){
+    if (graphing) {
       gtime += 1;
     }
   }
@@ -145,10 +193,62 @@ void mouseClicked() {
   }
 }
 
+void keyPressed() {
+  if (keyCode == RIGHT) {
+    for (Slider s : sliders) {
+      if (s.checkHovering()) {
+        float nextval = 20* s.getPercentage();
+        nextval = floor(nextval);
+        nextval = nextval*5 + 5;
+        nextval = nextval / 100;
+        if (nextval > 1) {
+          nextval = 1;
+        }
+        s.setPercentage(nextval);
+        s.shiftToPerc();
+      }
+    }
+  }  
+  if (keyCode == LEFT) {
+    for (Slider s : sliders) {
+      if (s.checkHovering()) {
+        float nextval = 20* s.getPercentage();
+        nextval = floor(nextval);
+        nextval = nextval*5 - 5;
+        nextval = nextval / 100;
+        if (nextval < 0) {
+          nextval = 0;
+        }
+        s.setPercentage(nextval);
+        s.shiftToPerc();
+      }
+    }
+  }
+}
+
+void updatePhi0() {
+  float philen = phimax - phimin;
+  float percentage = sliders.get(2).getPercentage();
+  phi0 = phimin + philen*percentage;
+}
+
+void updatePulsation() {
+  float pullen = pulsmax - pulsmin;
+  float percentage = sliders.get(0).getPercentage();
+  puls = pulsmin + pullen*percentage;
+}
+
+void updateRadius() {
+  float radlen = radmax - radmin;
+  float percentage = sliders.get(1).getPercentage();
+  RAD = radmin + radlen*percentage;
+}
+
 void updatecircles() {
-  osc.updatey(RAD*sin(-1 * PULS*time) + centerY);
-  rot.updatey(RAD*sin(-1*PULS*time) + centerY);
-  rot.updatex(RAD*cos(PULS*time) + centerX);
+  //update the position of the circles  
+  osc.updatey(RAD*sin(-1 * puls*time - phi0) + centerY);
+  rot.updatey(RAD*sin(-1*puls*time - phi0) + centerY);
+  rot.updatex(RAD*cos(puls*time + phi0) + centerX);
 }
 
 void drawcircle() {
