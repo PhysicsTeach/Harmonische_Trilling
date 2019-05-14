@@ -3,7 +3,7 @@ class Arrow {
   float yb;
   float xe;
   float ye;
-
+  
   color col;
 
   float x1 = 0;
@@ -59,9 +59,9 @@ class Arrow {
     this.xs = this.xb + 0.95*delx;
     this.ys = this.yb + 0.95*dely;
 
-    float L = dist(this.xs, this.ys, this.xe, this.ye);
+    float L = abs(dist(this.xs, this.ys, this.xe, this.ye));
 
-    float alpha = asin(dely/dis);
+    float alpha = atan2(dely,delx);
     float beta = HALF_PI - alpha;
 
     float delxx = L*cos(beta)/2;
@@ -72,4 +72,5 @@ class Arrow {
     this.x2 = this.xs + delxx;
     this.y2 = this.ys - delyy;
   }
+  
 }
